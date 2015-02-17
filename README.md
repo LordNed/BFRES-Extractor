@@ -4,6 +4,8 @@ Extracts files from Nintendo/WiiU .bfres files used in Pikmin, Wind Waker, Mario
 ## What this tool does and doesn't do:
 The only thing that mostly* works at this point is the extraction of "Embedded Files" (see [file spec](http://mk8.tockdom.com/wiki/BFRES_(File_Format))). There are 11 other sub-types for files and partial extraction of those is supported. More on this in a minute...
 
+FTEX files now dump out both their FTEX header, as well as a .gtx file containing the actual texture data. Support for this was added in v0.2. Fairly untested, but seemed to work from what I could see.
+
 ## Usage:
 Drag and drop an **uncompressed** .bfres file onto the executable. Folders for the 12 sub-file types will be generated alongside the .bfres file containing their contents. Many .bfres files can be found inside of [.sarc archives](http://mk8.tockdom.com/wiki/SARC_%28File_Format%29) - an extractor is available on this page.
 
@@ -37,3 +39,5 @@ Other potential cases for errors is in the [calculation of file lengths for sub-
 
 ## Credits
 Written by LordNed with perpetual help from Sage of Mirrors, and, as usual, our work is built on the backs of those who came before us on various wikis and previously written tools. None of this would be possible without disc dumping tools, archive extracting tools, and partial (if not full) wiki documentation for various things, and to those who write these you have our gratitude.
+
+FTEX dumping support added as a result of work done by TwilightZoney and ItEasyActually. Thanks for walking me through the format and letting me know what bits and bobs I needed from various formats to get these dumped out!

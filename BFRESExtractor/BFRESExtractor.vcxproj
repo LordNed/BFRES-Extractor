@@ -81,6 +81,8 @@
   <ItemGroup>
     <ClInclude Include="FMDLFileFormat.h" />
     <ClInclude Include="FRESFileFormat.h" />
+    <ClInclude Include="FTexHeader.h" />
+    <ClInclude Include="GTXFileFormat.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BFRESExtractor.cpp" />

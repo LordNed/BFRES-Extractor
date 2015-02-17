@@ -24,6 +24,12 @@
     <ClInclude Include="FMDLFileFormat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FTexHeader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GTXFileFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BFRESExtractor.cpp">

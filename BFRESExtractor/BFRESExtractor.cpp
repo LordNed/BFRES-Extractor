@@ -4,6 +4,8 @@
 #include <iostream>
 #include <fstream>
 #include "FRESFileFormat.h"
+#include "FTexHeader.h"
+#include "GTXFileFormat.h"
 #include <Windows.h> // Needed for CreateDirectory(...)
 #include <direct.h> // Needed for _getcwd 
 
@@ -70,6 +72,105 @@ static void WriteEmbeddedFileToDisk(int nodeIndex, int nodeOffsetFromStartOfFile
 	std::ostream outFile(&fb);
 	outFile.write((char *)pHeader + sizeof(FRESHeader) + dataOffset + (nodeIndex * 0x8), dataLength);
 	fb.close();
+}
+
+static void WriteFTexDataToDisk(FRESHeader *pHeader, IndexGroup *pFTexGroup)
+{
+	for (int i = 0; i < pFTexGroup->GetNodeCount(); i++)
+	{
+		int nodeOffsetFromStartOfFile = ((char *)pFTexGroup->GetNode(i) - (char *)pHeader);
+		int dataOffset = nodeOffsetFromStartOfFile + 0xc + pFTexGroup->GetNode(i)->GetDataOffset();
+
+		FTEXHeader *pFTexHeader = (FTEXHeader *)((char *)pHeader + dataOffset);
+		char *pFileName = (char *)pHeader + dataOffset + 168 + pFTexHeader->GetFilenameOffset();
+
+		std::cout << "["<<i<<"] Dumping FTex to GTX file " << pFileName << ".gtx" << std::endl;
+		//std::cout << "File Name Offset: " << pFTexHeader->GetFilenameOffset() << std::endl;
+		//std::cout << "MipMap Offset: " << pFTexHeader->GetMipMapOffset() << std::endl;
+		//std::cout << "ImageData Offset: " << pFTexHeader->GetImageDataOffset() << std::endl;
+		//std::cout << "MipMap Data Offset" << pFTexHeader->GetMipMapDataOffset() << std::endl;
+
+		// The FTEXHeader::GFDSurfaceData blob contains two bits of information we need.
+		// The size of the ImageData is stored at 32 (dec) and the size of the MipMap Data is stored at 40 (dec)
+		int imageDataBE = (int)pFTexHeader->GFDSurfaceData[32] | ((int)pFTexHeader->GFDSurfaceData[33] << 8) | ((int)pFTexHeader->GFDSurfaceData[34] << 16) | ((int)pFTexHeader->GFDSurfaceData[35] << 24);
+		int imageDataSize = _byteswap_ulong(imageDataBE);
+
+		int mipmapDataBE = (int)pFTexHeader->GFDSurfaceData[40] | ((int)pFTexHeader->GFDSurfaceData[41] << 8) | ((int)pFTexHeader->GFDSurfaceData[42] << 16) | ((int)pFTexHeader->GFDSurfaceData[43] << 24);
+		int mipmapDataSize = _byteswap_ulong(mipmapDataBE);
+
+		//std::cout << "ImageData Size: " << imageDataSize << std::endl;
+		//std::cout << "Mipmap Data Size: " << mipmapDataSize << std::endl;
+
+		// Time to write an GTX file to disk based on the extracted information. 
+		std::string outputDir = CurrentWorkingDir + GetFolderNameForGroupIndex(1);
+		outputDir.append("\\");
+		CreateDirectoryAbsolute(outputDir);
+		outputDir.append(pFileName);
+		outputDir.append(".gtx");
+
+		std::ofstream gtxFile;
+		gtxFile.open(outputDir.c_str(), std::ios::out | std::ios::binary);
+
+		GTXHeader gtxHeader;
+		gtxHeader.Magic[0] = 'G'; gtxHeader.Magic[1] = 'f'; gtxHeader.Magic[2] = 'x'; gtxHeader.Magic[3] = '2'; // Please never do this again :D
+		gtxHeader.HeaderSize = _byteswap_ulong(32);
+		gtxHeader.MajorVersion = _byteswap_ulong(7);
+		gtxHeader.MinorVersion = _byteswap_ulong(1);
+		gtxHeader.GpuVersion = _byteswap_ulong(2);
+		gtxHeader.AlignmentMode = 0;
+		gtxHeader.Reserved1 = 0;
+		gtxHeader.Reserved2 = 0;
+
+		// Stuff it into our file.
+		gtxFile.write((char *)&gtxHeader, sizeof(GTXHeader));
+
+		GTXBlockHeader firstBlock;
+		firstBlock.Magic[0] = 'B'; firstBlock.Magic[1] = 'L'; firstBlock.Magic[2] = 'K'; firstBlock.Magic[3] = '{'; // I just said not to do it!
+		firstBlock.HeaderSize = _byteswap_ulong(32);
+		firstBlock.MajorVersion = _byteswap_ulong(1);
+		firstBlock.MinorVersion = 0;
+		firstBlock.Type = _byteswap_ulong(11);
+		firstBlock.DataSize = _byteswap_ulong(156);
+		firstBlock.Id = 0;
+		firstBlock.TypeIndex = 0;
+
+		// Cram that into our file
+		gtxFile.write((char *)&firstBlock, sizeof(GTXBlockHeader));
+
+		// Apparently we now cram the entire 156 byte array from the FTEX header into the file. 
+		gtxFile.write((char *)pFTexHeader->GFDSurfaceData, 156); 
+
+		// Most of the stuff here is the same, so we'll copy...
+		GTXBlockHeader imageDataHeader = firstBlock;
+		imageDataHeader.Type = _byteswap_ulong(12);
+		imageDataHeader.DataSize = _byteswap_ulong(imageDataSize);
+
+		gtxFile.write((char *)&imageDataHeader, sizeof(GTXBlockHeader));
+
+		// Now write the actual image data from the BFRES file into the GTX header.
+		// 0xB4 gets us the offset from the start of the pFTexGroup and all of the offsets are relative to their
+		// current positions.
+		gtxFile.write((char *)pHeader + dataOffset + 0xB0 + pFTexHeader->GetImageDataOffset(), imageDataSize);
+
+
+		// Copy again
+		GTXBlockHeader mipmapDataHeader = imageDataHeader;
+		mipmapDataHeader.Type = _byteswap_ulong(13);
+		mipmapDataHeader.DataSize = _byteswap_ulong(mipmapDataSize);
+
+		gtxFile.write((char *)&mipmapDataHeader, sizeof(GTXBlockHeader));
+
+		// Stuff mipmap data in.
+		gtxFile.write((char *)pHeader + dataOffset + 0xB4 + pFTexHeader->GetMipMapDataOffset(), mipmapDataSize);
+
+		// And finally a 'null' GTXBlockHeader to signify file end.
+		GTXBlockHeader terminator = mipmapDataHeader;
+		terminator.Type = _byteswap_ulong(1);
+		terminator.DataSize = 0;
+
+		gtxFile.write((char *)&terminator, sizeof(GTXBlockHeader));
+		gtxFile.close();
+	}
 }
 
 int main(int argc, char* argv[])
@@ -233,6 +334,28 @@ int main(int argc, char* argv[])
 					WriteEmbeddedFileToDisk(i, nodeOffsetFromStartOfFile, pSubFileData, pHeader, pFileName);
 				}
 
+			}
+
+			// We're now going to process as much sub-file data. This would be where you'd want to add an extractor for another
+			// type of data once the file format is mostly mapped.
+			switch (subFileType)
+			{
+				case 0: // FMDL
+					break;
+				case 1: // FTEX
+					WriteFTexDataToDisk(pHeader, pSubFileData);
+					break;
+				case 2: // FSKA (Skeleton Animation?)
+				case 3: 
+				case 4:
+				case 5: // FSHU (Shape...?)
+				case 6: // FTXP data (?)
+				case 7: // Unknown
+				case 8: // FVIS (Bone Visibility)
+				case 9: // FSHA (Shape?)
+				case 10: // FSCN (Scene/Hiearchy?)
+				case 11: // Embedded File (Handled above)
+					break;
 			}
 		}
 
