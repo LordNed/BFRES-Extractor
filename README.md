@@ -12,7 +12,7 @@ Drag and drop an **uncompressed** .bfres file onto the executable. Folders for t
 ![](http://i.imgur.com/Yl3Nd2D.png)
 
 ## Caveats and Current BFRES Understandings
-Initial understanding of the BFRES format (based on documentation on TockDom) lead us to believe that it was an archive format for various game content. However, further research leads us to believe that this is not true.
+The BFRES format is often used as a complex model format that supports shapes, materials, and various types of animations. BFRES can also contain self-contained files, and sometimes BFRES archives are only composed of these files.
 
 The BFRES format is organized in the following fashion.
 
