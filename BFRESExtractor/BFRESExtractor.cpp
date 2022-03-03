@@ -30,7 +30,7 @@ static std::string GetFolderNameForGroupIndex(unsigned int index)
 	case 6:
 		return std::string("6_FTXP");
 	case 7:
-		return std::string("7_Unknown");
+		return std::string("7_FVIS");
 	case 8:
 		return std::string("8_FVIS");
 	case 9:
@@ -207,18 +207,23 @@ int main(int argc, char* argv[])
 
 		FRESHeader *pHeader = (FRESHeader*)pMemory;
 		std::cout << "File Name: " << pHeader->GetFileName() << std::endl;
+		std::cout << "File Version: " << pHeader->GetFileVersion() << " bytes [0x" << std::hex << pHeader->GetFileVersion() << std::dec << "]" << std::endl;
 		std::cout << "File Length: " << pHeader->GetFileLength() << " bytes [0x" << std::hex << pHeader->GetFileLength() << std::dec << "]" << std::endl;
 		std::cout << "Alignment Offset: " << pHeader->GetFileAlignment() << std::endl;
 		std::cout << "String Table Offset: " << pHeader->GetStringTableOffset() << " bytes [0x" << std::hex << pHeader->GetStringTableOffset() << std::dec << "]" << std::endl;
 		std::cout << "String Table Length: " << pHeader->GetStringTableLength() << " bytes [0x" << std::hex << pHeader->GetStringTableLength() << std::dec << "]" << std::endl;
 
 		std::cout << "Index Group Data: " << std::endl;
-		for (int i = 0; i < 12; i++)
+
+		int GroupCount = 12;
+		if (pHeader->GetFileVersion() <= 16842759)
+			GroupCount = 9;
+		for (int i = 0; i < GroupCount; i++)
 		{
 			std::cout << "[" << i << "] Count: " << pHeader->GetFileCountForGroup(i) << " Offset: " << pHeader->GetFileOffsetForGroup(i) << " [0x" << std::hex << pHeader->GetFileOffsetForGroup(i) << std::dec << "]" << std::endl;
 		}
 
-		for (int subFileType = 0; subFileType < 12; subFileType++)
+		for (int subFileType = 0; subFileType < GroupCount; subFileType++)
 		{
 			if (pHeader->GetFileOffsetForGroup(subFileType) == 0)
 			{
@@ -345,15 +350,15 @@ int main(int argc, char* argv[])
 				case 1: // FTEX
 					WriteFTexDataToDisk(pHeader, pSubFileData);
 					break;
-				case 2: // FSKA (Skeleton Animation?)
-				case 3: 
-				case 4:
-				case 5: // FSHU (Shape...?)
-				case 6: // FTXP data (?)
-				case 7: // Unknown
-				case 8: // FVIS (Bone Visibility)
-				case 9: // FSHA (Shape?)
-				case 10: // FSCN (Scene/Hiearchy?)
+				case 2: // FSKA (Skeleton Animation)
+				case 3: // FSHU (Shader)
+				case 4: // FSHU (Color)
+				case 5: // FSHU (Texture SRT)
+				case 6: // FTXP (Texture Pattern)
+				case 7: // FVIS (Bone Visibility)
+				case 8: // FVIS (Material Visibility)
+				case 9: // FSHA (Shape)
+				case 10: // FSCN (Scene/Hiearchy)
 				case 11: // Embedded File (Handled above)
 					break;
 			}

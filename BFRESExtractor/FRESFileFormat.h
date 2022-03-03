@@ -66,12 +66,9 @@ struct IndexGroup
 struct FRESHeader
 {
 	unsigned char Magic[4]; //FRES
-	char UnknownA;
-	char UnknownB;
-	char UnknownC;
-	char UnknownD;
+	unsigned int FileVersion;
 	short ByteOrderMark; //0xFE, 0xFF for big endian, 0xFF, 0xFE for little endian.
-	short UnknownVersion; //Maybe a version number?
+	short HeaderLength; //Spans the bytes until FileAlignment. always 0x0010.
 	unsigned int FileLength; //Total file length (header + contents) in bytes.
 	unsigned int FileAlignment; // A power of 2 (?)
 	unsigned int FileNameOffset; // File name offset (relative to this variable in memory, so add 0x14 from FRESHeader start to get correct offset)
@@ -89,6 +86,11 @@ struct FRESHeader
 		// The FileNameOffset is specified relative to the location of the FileNameOffset
 		// in the header. This is what the 0x14 comes from.
 		return (char *)this + 0x14 + relOffset;
+	}
+
+	unsigned int GetFileVersion()
+	{
+		return _byteswap_ulong(FileVersion);
 	}
 
 	unsigned int GetFileLength()
